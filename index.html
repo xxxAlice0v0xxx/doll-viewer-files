@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ドール採寸＆3D服プレビュー</title>
+<script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+<style>
+  body { font-family: sans-serif; padding: 20px; }
+  label { display: block; margin-top: 10px; }
+  input[type=number] { width: 80px; }
+  select { width: 150px; }
+  .output { margin-top: 20px; padding: 10px; border: 1px solid #ccc; }
+  .viewer-container { display: flex; gap: 20px; margin-top: 20px; }
+  model-viewer { width: 300px; height: 500px; border: 1px solid #ddd; }
+</style>
+</head>
+<body>
+<h1>ブラインドドール リロロ＆その他ドール 採寸フォーム</h1>
+
+<label>ドールを選んでください
+<select id="dollSelect">
+  <option value="custom">カスタム入力</option>
+  <option value="riloro">リロロ</option>
+  <option value="dollA">不可食用人間　月飛び時間</option>
+  <option value="dollB">その他ドールB</option>
+</select>
+</label>
+
+<label>全長（頭から足先まで）<input type="number" id="height" value="17.0" step="0.1"></label>
+<label>首回り<input type="number" id="neck" value="6.0" step="0.1"></label>
+<label>胸囲<input type="number" id="chest" value="12.0" step="0.1"></label>
+<label>ウエスト<input type="number" id="waist" value="10.0" step="0.1"></label>
+<label>腕の長さ（肩から手首まで）<input type="number" id="arm" value="7.5" step="0.1"></label>
+<label>足の長さ<input type="number" id="leg" value="7.5" step="0.1"></label>
+
+<label>ゆとり（cm）<input type="number" id="ease" value="1.5" step="0.1" min="0" max="3"></label>
+
+<button onclick="calculate()">採寸＋ゆとりを計算して表示</button>
+
+<div class="output" id="result"></div>
+
+<h2>3Dプレビュー（360°回転可能）</h2>
+
+<div class="viewer-container">
+  <model-viewer
+    id="doll3D"
+    src="https://xxxAlice0v0xxx.github.io/doll-viewer-files/blanky_doll.glb"
+    camera-controls
+    auto-rotate
+    background-color="#ffffff">
+  </model-viewer>
+
+  <model-viewer
+    id="dress3D"
+    src="https://modelviewer.dev/shared-assets/models/cube.gltf"
+    camera-controls
+    auto-rotate
+    background-color="#ffffff">
+  </model-viewer>
+</div>
+
+<!-- srcにジェミニから好きなモデルを入れ込む -->
+
+<script>
+const dollSizes = {
+  riloro: { height:17.0, neck:6.0, chest:12.0, waist:10.0, arm:7.5, leg:7.5 },
+  dollA: { height:12, neck:2.2, chest:6.1, waist:7.0, arm:4.1, leg:5.5 },
+  dollB: { height:15.0, neck:5.5, chest:11.0, waist:9.0, arm:7.0, leg:7.0 }
+};
+
+document.getElementById('dollSelect').addEventListener('change', function(){
+  const value = this.value;
+  const fields = ['height','neck','chest','waist','arm','leg'];
+  if(value === 'custom'){
+    fields.forEach(f => document.getElementById(f).disabled = false);
+  } else {
+    const size = dollSizes[value];
+    document.getElementById('height').value = size.height;
+    document.getElementById('neck').value = size.neck;
+    document.getElementById('chest').value = size.chest;
+    document.getElementById('waist').value = size.waist;
+    document.getElementById('arm').value = size.arm;
+    document.getElementById('leg').value = size.leg;
+    fields.forEach(f => document.getElementById(f).disabled = true);
+  }
+});
+
+function calculate(){
+  const height = parseFloat(document.getElementById('height').value);
+  const neck = parseFloat(document.getElementById('neck').value);
+  const chest = parseFloat(document.getElementById('chest').value);
+  const waist = parseFloat(document.getElementById('waist').value);
+  const arm = parseFloat(document.getElementById('arm').value);
+  const leg = parseFloat(document.getElementById('leg').value);
+  const ease = parseFloat(document.getElementById('ease').value);
+
+  const withEase = (size, e) => (size + e).toFixed(2);
+
+  document.getElementById('result').innerHTML = `
+  <h3>入力サイズ（素のサイズ）</h3>
+  全長：${height} cm<br>
+  首回り：${neck} cm<br>
+  胸囲：${chest} cm<br>
+  ウエスト：${waist} cm<br>
+  腕の長さ：${arm} cm<br>
+  足の長さ：${leg} cm<br>
+
+  <hr>
+
+  <h3>縫い代込み・ゆとり込みの完成サイズ</h3>
+  胸囲：${withEase(chest, ease)} cm<br>
+  ウエスト：${withEase(waist, ease)} cm<br>
+  腕の長さ：${withEase(arm, 0.5)} cm （縫い代固定＋0.5cm）<br>
+  首回り：${withEase(neck, ease)} cm<br>
+  全長：${withEase(height, 0)} cm （丈はゆとりなし）<br>
+  足の長さ：${withEase(leg, 0)} cm （丈はゆとりなし）<br>
+
+  <hr>
+  <small>※ゆとりは胸囲・ウエスト・首回りに適用。腕の長さは縫い代＋0.5cmで固定。丈はゆとりなし。</small>
+  `;
+
+  // ドール本体スケーリング（全長に応じて）
+  const dollModel = document.getElementById('doll3D');
+  const dollScale = height / 17.0; // リロロ基準
+  dollModel.style.transform = `scale(${dollScale})`;
+
+  // 服パーツスケーリング（胸囲・ウエスト＋ゆとり）
+  const dressModel = document.getElementById('dress3D');
+  const chestScale = (chest + ease) / 12.0;
+  const waistScale  = (waist + ease) / 10.0;
+  // X,Zを胸囲方向、Yをウエスト方向に対応
+  dressModel.style.transform = `scaleX(${chestScale}) scaleY(${waistScale}) scaleZ(${chestScale})`;
+}
+</script>
+
+</body>
+</html>
+
+
